@@ -5,12 +5,10 @@ float inf = numeric_limits<float>::infinity();
 using ll = long long;
 const double radius = 100;
 const double GAMMA = pow(10, 6.0 / 10.0);
-const double end_time = 100;
+const double end_time = 100000;
 constexpr double PI = 3.14159265358979323846264338;
 const int num_channel = 6;
 const int num_power = 4;
-const double pass_loss_exponent = 2.5;
-const double POWER = 1.0;
 const double theta = pow(10, 0.4);
 //const double delta = 2.0 / pass_loss_exponent;
 const double lambda_BS = 1.0;
@@ -184,8 +182,7 @@ void sim_pr(double lambda_IoT, double alpha) {
 void sim_thp(double lambda_IoT, double alpha) {
     int num_IoT = poisson(4 * radius * radius * lambda_IoT);
     int num_BS = poisson(4 * radius * radius * lambda_BS);
-    
-    double success = 0;
+    double success = 0.0;
     cout << "pass loss exp : " << alpha << endl;
     
 //    bool p_flag[4] = {true, true, true, true};
@@ -239,20 +236,26 @@ void sim_thp(double lambda_IoT, double alpha) {
     
     double res = success / end_time;
     double I = thp_theo(lambda_IoT, lambda_BS, alpha);
-    cout << res << " " << I << endl << endl;
+    cout << "Throughput : " <<  res << " " << I << endl << endl;
     outputfile << res << " " << I << " ";
 }
 
 
 int main() {
-    string filename = "SPALOHA0.txt";
+    cout << "1: Pr sim, 2: Thp sim";
+    int key; cin >> key; cout << endl;
+    cout << "Put start lambda IoT : ";
+    double k; cin >> k; cout << endl;
+    string filename;
+    if (key == 1) filename = to_string(k) + "pr.txt";
+    else filename = to_string(k) + "thp.txt";
     outputfile.open(filename);
-    for (double i = 0.5; i <= 5; i += 0.5) {
+    for (double i = k; i <= 5; i += 0.5) {
         outputfile << i << " ";
         cout << "lambda IoT : " << i << endl;
         for (double alpha = 2.5; alpha <= 4.5; alpha += 0.5) {
-            //sim_pr(i, alpha);
-            sim_thp(i, alpha);
+            if (key == 1) sim_pr(i, alpha);
+            else sim_thp(i, alpha);
             //cout << alpha << " " << thp_theo(i, lambda_BS, alpha) << " " << endl;
         }
         cout << endl;
