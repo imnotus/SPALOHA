@@ -23,7 +23,7 @@ struct pos {
 struct terminal {
     pair<double, double> pos;
     //double to_BS[num_BS];
-    double nearest_dst;
+    double dst_to_origin;
     int nearest_BS;
     //double gain;
     double coef;
@@ -276,24 +276,29 @@ void sim_thp(double lambda_IoT, double alpha) {
         //端末情報を初期化
         for (int i = 0; i < num_IoT; i++) {
             pair<double, double> pos = coordinate();
-            device.at(i).nearest_dst = cal_dst(pos, origin);
-            for (int j = 0; j < num_BS; j++) {
-                double dst = cal_dst(pos, BS_pos.at(j));
-                device.at(i).state = true;
-                if (dst < device.at(i).nearest_dst) {
-                    device.at(i).state = false;
-                    break;
+            double dst_to = cal_dst(pos, origin);
+            device.at(i).dst_to_origin = dst_to;
+            if (dst_to < 20) {
+                for (int j = 0; j < num_BS; j++) {
+                    double dst = cal_dst(pos, BS_pos.at(j));
+                    device.at(i).state = true;
+                    if (dst < device.at(i).dst_to_origin) {
+                        device.at(i).state = false;
+                        break;
+                    }
+                    if (j == num_BS - 1) acl.push_back(i);
                 }
-                if (j == num_BS - 1) acl.push_back(i);
             }
             
             //端末-基地局間のフェージング係数を設定
             double H = exp_dist(1.0);//gauss_rand(0, 1);
-            double coef = H / pow(device.at(i).nearest_dst, alpha);
+            double coef = H / pow(device.at(i).dst_to_origin, alpha);
             if (device.at(i).state) device.at(i).coef = coef;
             SI += coef;
         }
-        for (int i = 0; i < acl.size(); i++) {
+        
+        int s = (int)acl.size();
+        for (int i = 0; i < s; i++) {
             double P = device.at(acl.at(i)).coef;
             double SIR = P / (SI - P);
             if (SIR > theta) {success++; break;}
