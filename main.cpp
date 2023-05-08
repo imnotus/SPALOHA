@@ -12,6 +12,7 @@ const double theta = pow(10, 0.4);
 //const double delta = 2.0 / pass_loss_exponent;
 const double lambda_BS = 1.;
 const double POWER = 100;
+const double Euler_constant = 0.5772156649;
 
 //出力ファイルを開く
 ofstream outputfile;
@@ -123,6 +124,16 @@ double theo(double lambda_IoT, double lambda_BS, double alpha) {
 }
 
 
+double theo2(double lambda_IoT, double lambda_BS, double alpha) {
+    double delta = 2.0 / alpha;
+    double n = lambda_IoT * PI * radius * radius;
+    //double g = (n - log(n + Euler_constant)) * 4. / lambda_IoT;
+    //cout << "g = " <<  g << endl;
+    double A = pow(theta * Euler_constant, delta) * PI * delta / sin(PI * delta);
+    double I = 1.0 / (1.0 +  A * lambda_IoT / lambda_BS);
+    return I;
+}
+
 double thp_theo(double lambda_IoT, double lambda_BS, double alpha) {
     double delta = 2.0 / alpha;
     double A = pow(theta, delta) * PI * delta / sin(PI * delta);
@@ -132,7 +143,7 @@ double thp_theo(double lambda_IoT, double lambda_BS, double alpha) {
 
 
 
-void sim_pr2(double lambda_IoT, double alpha) {
+void sim_pr2(double lambda_IoT, double alpha, double noise) {
     double success = 0;
     cout << "pass loss exp : " << alpha << endl;
     
@@ -177,7 +188,7 @@ void sim_pr2(double lambda_IoT, double alpha) {
             else SI += H / pow(dst2, alpha);
         }
 //        pair<double, double> SI = ini(num_IoT, num_BS, alpha);
-        double SIR = coef / SI;
+        double SIR = coef / (SI + noise);
         if (SIR > theta) success++;
         
         //進捗状況を表示
@@ -197,7 +208,7 @@ void sim_pr2(double lambda_IoT, double alpha) {
 }
 
 
-void sim_thp(double lambda_IoT, double alpha) {
+void sim_thp(double lambda_IoT, double alpha, double noise) {
     double success = 0.0, power_dif_sum = 0.0;
     cout << "pass loss exp : " << alpha << endl;
     
@@ -242,18 +253,11 @@ void sim_thp(double lambda_IoT, double alpha) {
         }
         
         int s = (int)acl.size();
-        double big = 0, big2 = 0;
         for (int i = 0; i < s; i++) {
             double P = device.at(acl.at(i)).coef;
-            if (big2 < P) {
-                if (big < P) big = P;
-                else big2 = P;
-            }
-            double N = normrand();
-            double SIR = P / (SI - P + N);
+            double SIR = P / (SI - P + noise);
             if (SIR > theta) {success++; break;}
         }
-        power_dif_sum += (big - big2);
         
         //進捗状況を表示
         double progress = i / end_time;
@@ -272,7 +276,7 @@ void sim_thp(double lambda_IoT, double alpha) {
 
 
 //NOMA
-void NOMA_thp(double lambda_IoT, double alpha) {
+void NOMA_thp(double lambda_IoT, double alpha, double noise) {
     double success = 0.0;
     cout << "pass loss exp : " << alpha << endl;
     
@@ -327,10 +331,10 @@ void NOMA_thp(double lambda_IoT, double alpha) {
         }
         
         SI -= big;
-        double SINR = big / (SI * 1.1);
+        double SINR = big / (SI + noise);
         if (SINR > theta) success++;
         SI -= big2;
-        SINR = big2 / (SI * 1.1);
+        SINR = big2 / (SI + noise);
         if (SINR > theta) success++;
         
         //進捗状況を表示
@@ -362,15 +366,33 @@ int main() {
     for (double i = k; i <= 5; i += 0.5) {
         //outputfile << i << " ";
         cout << "lambda IoT : " << i << endl;
-        for (double alpha = 2.5; alpha <= 4.5; alpha += 0.5) {
-            if (key == 1) sim_pr2(i, alpha);
-            else if (key == 2) sim_thp(i, alpha);
-            else NOMA_thp(i, alpha);
+//        double noise = 0;
+//        for (double alpha = 2.5; alpha <= 4.5; alpha += 0.5) {
+//            if (key == 1) sim_pr2(i, alpha, noise);
+//            else if (key == 2) sim_thp(i, alpha, noise);
+//            else NOMA_thp(i, alpha, noise);
+//        }
+        //alpha固定、ノイズ変化
+        double alpha = 4.0;
+        for (double noise = 10; noise <= 100000; noise *= 10) {
+            if (key == 1) sim_pr2(i, alpha, noise);
+            else if (key == 2) sim_thp(i, alpha, noise);
+            else NOMA_thp(i, alpha, noise);
         }
         cout << endl;
         //outputfile << endl;
     }
     
+//    double k = 0.5;
+//    for (double i = k; i <= 5; i += 0.5) {
+//        cout << "lambda IoT : " << i << endl;
+//        for (double alpha = 2.5; alpha <= 4.5; alpha += 0.5) {
+//            double I = theo(i, lambda_BS, alpha);
+//            double I2 =  theo2(i, lambda_BS, alpha);
+//            cout << i * (I + I2) / lambda_BS << endl;
+//        }
+//        cout << endl;
+//    }
     
     //max throughput
 //    string filename = "max_thp2.txt";
